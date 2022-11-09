@@ -47,6 +47,9 @@ type Raft struct {
 	log         []LogEntries
 	// log entries; each entry contains command for state machine,
 	// and term when entry was received by leader (first index is 1)
+
+	commitIndex int // ponteiro para índice de log???
+	// o índice que deve ser usado na próxima entrada do log: LastLogIndex +1
 }
 
 // return currentTerm and whether this server
@@ -108,14 +111,21 @@ type RequestVoteReply struct {
 // 2. If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 
-	if args.Term < rf.currentTerm {
+	if args.Term < rf.currentTerm { 
+		reply.Term = rf.currentTerm
 		reply.VoteGranted = false
-	} else if rf.votedFor == nil { // falta isso: or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote
-		reply.VoteGranted = true
+	} else if rf.votedFor == nil || rf.votedFor == args.candidateId { // falta isso: or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote
+		if args.LastLogTerm >= rf.log[commitIndex-1].term && args.LastLogIndex >= (rf.commitIndex)-1 { // candidato.log tá mais avançado do que o do seguidor em 1 term e o último comando recebido é mais recente ou igual
+			rf.votedFor = args.candidateId
+			rf.currentTerm = args.Term
+			reply.Term = rf.currentTerm
+			reply.VoteGranted = true
+		} 
 	}
 
-	// falta o term ? precisa usar o term aqui ?
-
+	/* Só escrevi a lógica da condição, ainda não sei exatamente como funcionam as funções em Go,
+	então não sei como deve ser o retorno, já que esse "reply" me parece um argumento de entrada.
+	Como só segui o padrão das linhas que já estavam escritas, podem existir erros sintáticos. */
 }
 
 // example code to send a RequestVote RPC to a server.
@@ -152,7 +162,9 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 
 // You'll also need to define a struct to hold information about each log entry.
 type LogEntries struct {
-	term int
+	index	int
+	term 	int
+	command interface{}
 
 	// log entries; each entry contains command for state machine, and term when entry
 	// was received by leader (first index is 1)
@@ -186,6 +198,23 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		reply.Success = false
 	}
 }
+
+/*
+func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
+	if args.Term < rf.Term || rf.log[PrevLogIndex] == nil || rf.log[PrevLogIndex].term != PrevLogTerm {
+		reply.Term = rf.currentTerm
+		reply.Success = false
+	} else 
+	
+	// resetar election timeout
+	// definir mudança em rf.currentTerm
+
+	reply.Term = rf.currentTerm
+	reply.Success = true
+
+	// Não estou muito convicto desse código, então escrevi mas deixei comentado e com a versão base
+}
+*/
 
 // the service using Raft (e.g. a k/v server) wants to start
 // agreement on the next command to be appended to Raft's log. if this
