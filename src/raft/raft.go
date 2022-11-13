@@ -58,8 +58,7 @@ type Raft struct {
 // return currentTerm and whether this server
 // believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
-
-	var term int
+	var term = rf.currentTerm
 	var isleader bool
 	// Your code here.
 	return term, isleader
@@ -96,7 +95,7 @@ func (rf *Raft) readPersist(data []byte) {
 // field names must start with capital letters!
 type RequestVoteArgs struct {
 	Term         int // candidateTerm
-	CandidateId  int // candidate resquesting vote
+	CandidateId  *int // candidate resquesting vote
 	LastLogIndex int // index of candidate’s last log entry
 	LastLogTerm  int // term of candidate’s last log entry
 }
@@ -164,8 +163,8 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 }
 
 // You'll also need to define a struct to hold information about each log entry.
-	// log entries; each entry contains command for state machine, and term when entry
-	// was received by leader (first index is 1)
+// log entries; each entry contains command for state machine, and term when entry
+// was received by leader (first index is 1)
 type LogEntries struct {
 	Index	int
 	Term 	int
@@ -285,10 +284,13 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.persister = persister // guarda o estado persistido, é um ponteiro de Persister
 	rf.me = me               // índice do peer desse servidor, é um int
 
-	// Your initialization code here.
+	rf.currentTerm = 0 // currentTerm é inicializado com 0
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
+
+	// aqui é a goroutine para começar a eleição
+	go rf.LeaderElection()
 
 	return rf
 }
