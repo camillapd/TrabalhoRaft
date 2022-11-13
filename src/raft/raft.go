@@ -40,14 +40,19 @@ type Raft struct {
 	persister *Persister          // Object to hold this peer's persisted state
 	me        int                 // this peer's index into peers[]
 
+	// persistent on all servers
 	currentTerm int  // latest term server has seen (initialized to 0 on first boot, increases monotonically)
 	votedFor    *int // candidateId that received vote in current term (or null if none)
-	log         []LogEntries
-	// log entries; each entry contains command for state machine,
-	// and term when entry was received by leader (first index is 1)
+	log         []LogEntries // log entries
 
+	// volatile on all servers
 	commitIndex int // ponteiro para índice de log???
 	// o índice que deve ser usado na próxima entrada do log: LastLogIndex +1
+	lastApplied int // index of highest log entry applied to state machine (initialized to 0, increases monotonically)
+
+	// volatile on leaders - reinitialized after election
+	nextIndex []int // for each server, index of the next log entry to send to that server (initialized to leaderlast log index + 1)
+	matchIndex []int // for each server, index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)
 }
 
 // return currentTerm and whether this server
