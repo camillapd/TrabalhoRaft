@@ -117,9 +117,9 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	if args.Term < rf.currentTerm { 
 		reply.Term = rf.currentTerm
 		reply.VoteGranted = false
-	} else if rf.votedFor == nil || rf.votedFor == args.candidateId { // falta isso: or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote
-		if args.LastLogTerm >= rf.log[commitIndex-1].term && args.LastLogIndex >= (rf.commitIndex)-1 { // candidato.log tá mais avançado do que o do seguidor em 1 term e o último comando recebido é mais recente ou igual
-			rf.votedFor = args.candidateId
+	} else if rf.votedFor == nil || rf.votedFor == args.CandidateId { // falta isso: or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote
+		if args.LastLogTerm >= rf.log[rf.commitIndex-1].Term && args.LastLogIndex >= (rf.commitIndex)-1 { // candidato.log tá mais avançado do que o do seguidor em 1 term e o último comando recebido é mais recente ou igual
+			rf.votedFor = args.CandidateId
 			rf.currentTerm = args.Term
 			reply.Term = rf.currentTerm
 			reply.VoteGranted = true
