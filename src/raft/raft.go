@@ -196,8 +196,21 @@ type AppendEntriesReply struct {
 // 4. Append any new entries not already in the log
 // 5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
-	if args.Term < reply.Term {
+	// 1
+	if args.Term < rf.currentTerm {
 		reply.Success = false
+	} 
+
+	// 2
+	for i := 0; i < len(rf.log); i++ {
+		if (i == args.PrevLogIndex && args.Entries[i].Command == nil ) && args.Entries[i].Term == args.PrevLogTerm {
+			reply.Success = false
+		}
+	}
+
+	// 5
+	if args.LeaderCommit > rf.commitIndex {
+		rf.commitIndex = int(math.Min(float64(args.LeaderCommit), float64(args.PrevLogIndex + 1))) // não tenho certeza do segundo parametro 
 	}
 }
 
