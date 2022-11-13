@@ -235,10 +235,14 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 // the leader.
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	index := -1
-	term := -1
-	isLeader := true
+	term := rf.currentTerm
+	isLeader := false
 
-	// Método é do tipo Raft, recebe uma interface como parâmetro e retorna 3 valores: int, int e boolean
+	if (rf.state == LEADER) {
+		isLeader = true
+	}
+
+	// Não modificar
 
 	return index, term, isLeader
 }
