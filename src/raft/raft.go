@@ -159,13 +159,12 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 }
 
 // You'll also need to define a struct to hold information about each log entry.
-type LogEntries struct {
-	index	int
-	term 	int
-	command interface{}
-
 	// log entries; each entry contains command for state machine, and term when entry
 	// was received by leader (first index is 1)
+type LogEntries struct {
+	Index	int
+	Term 	int
+	Command interface{}
 }
 
 // To implement heartbeats, define an AppendEntries RPC struct (though you may not need all the arguments yet)
