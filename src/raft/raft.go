@@ -115,26 +115,34 @@ type RequestVoteReply struct {
 }
 
 // example RequestVote RPC handler.
-// Receiver implementation:
-// 1. Reply false if term < currentTerm
-// 2. If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
+	rf.mu.Lock()
 
-	if args.Term < rf.currentTerm { 
 		reply.Term = rf.currentTerm
+
+	if rf.votedFor == -1 || rf.votedFor == args.CandidateId {
+		if args.Term < rf.currentTerm { // como no paper: Reply false if term < currentTerm
 		reply.VoteGranted = false
-	} else if rf.votedFor == nil || rf.votedFor == args.CandidateId { // falta isso: or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote
-		if args.LastLogTerm >= rf.log[rf.commitIndex-1].Term && args.LastLogIndex >= (rf.commitIndex)-1 { // candidato.log tá mais avançado do que o do seguidor em 1 term e o último comando recebido é mais recente ou igual
-			rf.votedFor = args.CandidateId
+		} else if args.Term > rf.currentTerm { 
+			// como no paper: If RPC request or response contains term T > currentTerm: set currentTerm = T
 			rf.currentTerm = args.Term
-			reply.Term = rf.currentTerm
+			if args.LastLogTerm >= rf.log[rf.commitIndex-1].Term && args.LastLogIndex >= (rf.commitIndex)-1 { 
+				// candidato.log tá mais avançado do que o do seguidor em 1 term e o último comando recebido é mais recente ou igual
+			rf.votedFor = args.CandidateId
 			reply.VoteGranted = true
 		} 
+		} else {
+			if args.LastLogTerm >= rf.log[rf.commitIndex-1].Term && args.LastLogIndex >= (rf.commitIndex)-1 { 
+				// candidato.log tá mais avançado do que o do seguidor em 1 term e o último comando recebido é mais recente ou igual
+				rf.votedFor = args.CandidateId
+				reply.VoteGranted = true
+			}
+		}
+	} else {
+		reply.VoteGranted = false
 	}
 
-	/* Só escrevi a lógica da condição, ainda não sei exatamente como funcionam as funções em Go,
-	então não sei como deve ser o retorno, já que esse "reply" me parece um argumento de entrada.
-	Como só segui o padrão das linhas que já estavam escritas, podem existir erros sintáticos. */
+	rf.mu.Unlock()
 }
 
 // example code to send a RequestVote RPC to a server.
