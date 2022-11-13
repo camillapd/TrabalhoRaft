@@ -266,18 +266,20 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.readPersist(persister.ReadRaftState())
 
 	return rf
-
-	/*
-	 Modify Make() to create a background goroutine that will kick off leader election periodically
-	 by sending out RequestVote RPCs when it hasn't heard from another peer for a while.
-	 This way a peer will learn who is the leader, if there is already leader, or become itself the leader.
-	 Implement the RequestVote() RPC handler so that servers will vote for one another.
-	*/
 }
 
-// Anotações
+/* Anotações
 
-/*
+-- Sobre GO
+
+	Goroutines são funções ou métodos executados em concorrência.
+	Podemos pensar nelas como uma especie de lightweight thread que são gerenciadas pelo runtime do Go.
+
+	channel, a concurrency-safe communication object
+
+
+-- Trabalho
+
 	A service calls Make(peers,me,…) to create a Raft peer.
 	The peers argument is an array of established RPC connections, one to each Raft peer (including this one).
 	The me argument is the index of this peer in the peers array.
@@ -291,28 +293,18 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	The reason you must use labrpc instead of Go's RPC package is that the tester tells labrpc to delay RPCs,
 	re-order them, and delete them to simulate challenging networks conditions under which your code should work correctly.
 	Don't modify labrpc because we will test your code with the labrpc as handed out.
-*/
 
-/*
-	Goroutines são funções ou métodos executados em concorrência.
-	Podemos pensar nelas como uma especie de lightweight thread que são gerenciadas pelo runtime do Go.
 
-	channel, a concurrency-safe communication object
+-- TODO:
 
-*/
-
-// TODO:
-
-/*
 	Implement leader election and heartbeats (AppendEntries RPCs with no log entries).
 	The goal for Part 2A is for a single leader to be elected, for the leader to remain the leader if there are no failures,
 	and for a new leader to take over if the old leader fails or if packets to/from the old leader are lost.
 	Run go test -run 2A to test your 2A code
-*/
 
-// Hints:
 
-/*
+ -- Hints:
+
 	1- Add any state you need to the Raft struct in raft.go. You'll also need to define a struct to hold information about each log entry.
 	Your code should follow Figure 2 in the paper as closely as possible.
 
