@@ -235,6 +235,16 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	return index, term, isLeader
 }
 
+// a go routine que implementa a eleição de líderes
+func (rf *Raft) LeaderElection() {
+
+}
+
+// a go routine que implementa os heartbeats
+func (rf *Raft) Heartbeat() {
+
+}
+
 // the tester calls Kill() when a Raft instance won't
 // be needed again. you are not required to do anything
 // in Kill(), but it might be convenient to (for example)
