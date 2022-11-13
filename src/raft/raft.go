@@ -196,47 +196,20 @@ type AppendEntriesReply struct {
 
 // Write an AppendEntries RPC handler method that resets the election timeout
 // so that other servers don't step forward as leaders when one has already been elected.
-// Receiver implementation:
-// 1. Reply false if term < currentTerm
-// 2. Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm
-// 3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry and all that follow it
-// 4. Append any new entries not already in the log
-// 5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
-	// 1
-	if args.Term < rf.currentTerm {
-		reply.Success = false
-	} 
+	rf.mu.Lock()
 
-	// 2
-	for i := 0; i < len(rf.log); i++ {
-		if (i == args.PrevLogIndex && args.Entries[i].Command == nil ) && args.Entries[i].Term == args.PrevLogTerm {
+	reply.Term = rf.currentTerm // o valor do AppendEntriesReply vai receber sempre o term atual do raft
+	reply.Success = true // é verdadeiro a menos que o if aconteça
+
+	if args.Term < rf.currentTerm { // como no paper: Reply false if term < currentTerm
 			reply.Success = false
-		}
-	}
-
-	// 5
-	if args.LeaderCommit > rf.commitIndex {
-		rf.commitIndex = int(math.Min(float64(args.LeaderCommit), float64(args.PrevLogIndex + 1))) // não tenho certeza do segundo parametro 
-	}
+	} else if args.Term > rf.currentTerm { // como no paper: If RPC request or response contains term T > currentTerm: set currentTerm = T
+		rf.currentTerm = args.Term
 }
 
-/*
-func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
-	if args.Term < rf.Term || rf.log[PrevLogIndex] == nil || rf.log[PrevLogIndex].term != PrevLogTerm {
-		reply.Term = rf.currentTerm
-		reply.Success = false
-	} else 
-	
-	// resetar election timeout
-	// definir mudança em rf.currentTerm
-
-	reply.Term = rf.currentTerm
-	reply.Success = true
-
-	// Não estou muito convicto desse código, então escrevi mas deixei comentado e com a versão base
+	rf.mu.Unlock()
 }
-*/
 
 // the service using Raft (e.g. a k/v server) wants to start
 // agreement on the next command to be appended to Raft's log. if this
