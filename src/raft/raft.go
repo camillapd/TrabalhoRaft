@@ -19,7 +19,6 @@ package raft
 
 import (
 	"labrpc"
-	"math"
 	"sync"
 )
 
@@ -50,7 +49,7 @@ type Raft struct {
 
 	// persistent on all servers
 	currentTerm int  // latest term server has seen (initialized to 0 on first boot, increases monotonically)
-	votedFor    *int // candidateId that received vote in current term (or null if none)
+	votedFor    int // candidateId that received vote in current term (or null if none)
 	log         []LogEntries // log entries
 
 	// volatile on all servers
@@ -103,7 +102,7 @@ func (rf *Raft) readPersist(data []byte) {
 // field names must start with capital letters!
 type RequestVoteArgs struct {
 	Term         int // candidateTerm
-	CandidateId  *int // candidate resquesting vote
+	CandidateId  int // candidate resquesting vote
 	LastLogIndex int // index of candidate’s last log entry
 	LastLogTerm  int // term of candidate’s last log entry
 }
