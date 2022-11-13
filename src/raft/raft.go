@@ -23,6 +23,14 @@ import (
 	"sync"
 )
 
+// variáveis globals da state machine
+// a qualquer momento cada servidor pode ter um dos três estados
+const  (
+	LEADER = 1
+	FOLLOWER = 2
+	CANDIDATE = 3
+)
+
 // as each Raft peer becomes aware that successive log entries are
 // committed, the peer should send an ApplyMsg to the service (or
 // tester) on the same server, via the applyCh passed to Make().
