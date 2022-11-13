@@ -60,6 +60,9 @@ type Raft struct {
 	// volatile on leaders - reinitialized after election
 	nextIndex []int // for each server, index of the next log entry to send to that server (initialized to leaderlast log index + 1)
 	matchIndex []int // for each server, index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)
+
+	state int
+	electionTimeout int
 }
 
 // return currentTerm and whether this server
@@ -280,7 +283,18 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.persister = persister // guarda o estado persistido, é um ponteiro de Persister
 	rf.me = me               // índice do peer desse servidor, é um int
 
-	rf.currentTerm = 0 // currentTerm é inicializado com 0
+	// inicializações dos estados do raft
+	rf.currentTerm = 0 	
+	rf.votedFor = -1
+	// rf.log[]
+
+	rf.commitIndex = 0
+	rf.lastApplied = 0
+
+	// rf.nextIndex[] é inicializado com 0 por default pelo go porque é array
+	// rf.matchIndex[] é inicializado com 0 por default pelo go porque é array
+
+	rf.state = FOLLOWER
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
