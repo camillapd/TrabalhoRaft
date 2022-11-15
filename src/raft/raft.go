@@ -264,7 +264,7 @@ func (rf *Raft) LeaderElection() {
 				rf.votes = 1
 
 				rand.Seed(time.Now().UnixNano())
-				rf.electionTimer = time.Duration(rand.Intn(10))
+				rf.electionTimer = time.Duration(rand.Intn(5))
 				rf.electionTimeout.Reset(rf.electionTimer)
 
 				requestVoteReply := &RequestVoteReply{}
@@ -290,7 +290,7 @@ func (rf *Raft) LeaderElection() {
 										rf.state = LEADER
 										rf.currentTerm = rf.currentTerm + 1
 										rand.Seed(time.Now().UnixNano())
-										rf.electionTimer = time.Duration(rand.Intn(10))
+										rf.electionTimer = time.Duration(rand.Intn(5))
 										rf.electionTimeout.Reset(rf.electionTimer)
 										go rf.Heartbeat()
 									}
@@ -300,7 +300,7 @@ func (rf *Raft) LeaderElection() {
 									rf.votes = 0
 									rf.votedFor = -1
 									rand.Seed(time.Now().UnixNano())
-									rf.electionTimer = time.Duration(rand.Intn(10))
+									rf.electionTimer = time.Duration(rand.Intn(5))
 									rf.electionTimeout.Reset(rf.electionTimer)
 								}
 								rf.mu.Unlock()
@@ -354,7 +354,7 @@ func (rf *Raft) Heartbeat() {
 						rf.votes = 0
 						rf.votedFor = -1
 						rand.Seed(time.Now().UnixNano())
-						rf.electionTimer = time.Duration(rand.Intn(10))
+						rf.electionTimer = time.Duration(rand.Intn(5))
 						rf.electionTimeout.Reset(rf.electionTimer)
 					}
 					rf.mu.Unlock()
@@ -412,8 +412,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.state = FOLLOWER
 	rf.votes = 0
 	rand.Seed(time.Now().UnixNano())
-	rf.electionTimer = time.Duration(rand.Intn(10))
-	rf.electionTimeout = time.NewTimer(rf.electionTimer * time.Second)
+	rf.electionTimer = time.Duration(rand.Intn(5))
+	rf.electionTimeout = time.NewTimer(rf.electionTimer * time.Millisecond)
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
