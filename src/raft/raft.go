@@ -19,6 +19,7 @@ package raft
 
 import (
 	"labrpc"
+	"math/rand"
 	"sync"
 	"time"
 )
@@ -66,6 +67,8 @@ type Raft struct {
 	votes           int
 	electionTimeout *time.Timer
 	electionTimer   time.Duration
+	minRandomTime   int
+	maxRandomTime   int
 }
 
 // return currentTerm and whether this server
@@ -255,29 +258,54 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 
 // a go routine que implementa a eleição de líderes
 func (rf *Raft) LeaderElection() { // WIP
-	rf.currentTerm = rf.currentTerm + 1
-	rf.state = CANDIDATE
-	rf.votedFor = rf.me
 
-	rf.electionTimer = 0
+	go func() {
+		for true {
+			rf.mu.Lock()
+			if rf.state == FOLLOWER {
+				rf.state = CANDIDATE // WIP
+			}
 
-	// if rf.votesReceived > outros ?
+			if rf.state == CANDIDATE {
+				rf.currentTerm = rf.currentTerm + 1
+				rf.votes = 1
 
-	requestVoteArgs := &RequestVoteArgs{}
-	requestVoteReply := &RequestVoteReply{}
+				rf.electionTimeout.Reset(rf.electionTimer)
 
-	rf.RequestVote(requestVoteArgs, requestVoteReply)
+				requestVoteReply := &RequestVoteReply{}
 
-	/*
-		To begin an election, a follower increments its current
-		term and transitions to candidate state. It then votes for
-		itself and issues RequestVote RPCs in parallel to each of
-		the other servers in the cluster. A candidate continues in
-		this state until one of three things happens: (a) it wins the
-		election, (b) another server establishes itself as leader, or
-		(c) a period of time goes by with no winner.
-	*/
+				for i := 0; i < len(rf.peers); i++ {
+					if i != rf.me {
+						go func(i int) {
+							rf.mu.Lock()
+							requestVoteArgs := &RequestVoteArgs{}
+							requestVoteArgs.Term = rf.currentTerm
+							requestVoteArgs.CandidateId = rf.me
+							rf.mu.Unlock()
 
+							rf.RequestVote(requestVoteArgs, requestVoteReply)
+						}(i)
+					}
+				}
+			}
+
+			if rf.state == LEADER {
+
+			}
+
+			rf.mu.Unlock()
+
+			/*
+				To begin an election, a follower increments its current
+				term and transitions to candidate state. It then votes for
+				itself and issues RequestVote RPCs in parallel to each of
+				the other servers in the cluster. A candidate continues in
+				this state until one of three things happens: (a) it wins the
+				election, (b) another server establishes itself as leader, or
+				(c) a period of time goes by with no winner.
+			*/
+		}
+	}()
 }
 
 // a go routine que implementa os heartbeats
@@ -349,8 +377,12 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	rf.state = FOLLOWER
 	rf.votes = 0
-	rf.electionTimer = 500
+	rf.maxRandomTime = 250
+	rf.maxRandomTime = 500
+	rf.electionTimer = time.Duration(rand.Intn(rf.maxRandomTime-rf.maxRandomTime)) * 5
 	rf.electionTimeout = time.NewTimer(rf.electionTimer * time.Second)
+
+	//  time.Duration(HEART_BEAT_TIMEOUT*3+rand.Intn(HEART_BEAT_TIMEOUT)) * time.Millisecond
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
