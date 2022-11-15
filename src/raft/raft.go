@@ -67,8 +67,6 @@ type Raft struct {
 	votes           int
 	electionTimeout *time.Timer
 	electionTimer   time.Duration
-	minRandomTime   int
-	maxRandomTime   int
 }
 
 // return currentTerm and whether this server
@@ -265,6 +263,8 @@ func (rf *Raft) LeaderElection() {
 				rf.currentTerm = rf.currentTerm + 1
 				rf.votes = 1
 
+				rand.Seed(time.Now().UnixNano())
+				rf.electionTimer = time.Duration(rand.Intn(10))
 				rf.electionTimeout.Reset(rf.electionTimer)
 
 				requestVoteReply := &RequestVoteReply{}
@@ -289,13 +289,19 @@ func (rf *Raft) LeaderElection() {
 									if rf.votes > len(rf.peers)/2 {
 										rf.state = LEADER
 										rf.currentTerm = rf.currentTerm + 1
+										rand.Seed(time.Now().UnixNano())
+										rf.electionTimer = time.Duration(rand.Intn(10))
+										rf.electionTimeout.Reset(rf.electionTimer)
 										go rf.Heartbeat()
 									}
 								} else if requestVoteReply.Term > rf.currentTerm {
-									rf.currentTerm = requestVoteArgs.Term
+									rf.currentTerm = requestVoteReply.Term
 									rf.state = FOLLOWER
 									rf.votes = 0
 									rf.votedFor = -1
+									rand.Seed(time.Now().UnixNano())
+									rf.electionTimer = time.Duration(rand.Intn(10))
+									rf.electionTimeout.Reset(rf.electionTimer)
 								}
 								rf.mu.Unlock()
 							}
@@ -342,11 +348,14 @@ func (rf *Raft) Heartbeat() {
 					rf.peers[i].Call("Raft.AppendEntries", appendEntriesArgs, appendEntriesReply)
 
 					rf.mu.Lock()
-					if appendEntriesReply.Term > rf.currentTerm {
+					if appendEntriesReply.Term > rf.currentTerm || !appendEntriesReply.Success {
 						rf.currentTerm = appendEntriesArgs.Term
 						rf.state = FOLLOWER
 						rf.votes = 0
 						rf.votedFor = -1
+						rand.Seed(time.Now().UnixNano())
+						rf.electionTimer = time.Duration(rand.Intn(10))
+						rf.electionTimeout.Reset(rf.electionTimer)
 					}
 					rf.mu.Unlock()
 				}(i)
@@ -402,9 +411,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	rf.state = FOLLOWER
 	rf.votes = 0
-	rf.maxRandomTime = 250
-	rf.maxRandomTime = 500
-	rf.electionTimer = time.Duration(rand.Intn(rf.maxRandomTime-rf.maxRandomTime)) * 5
+	rand.Seed(time.Now().UnixNano())
+	rf.electionTimer = time.Duration(rand.Intn(10))
 	rf.electionTimeout = time.NewTimer(rf.electionTimer * time.Second)
 
 	// initialize from state persisted before a crash
