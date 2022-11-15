@@ -407,8 +407,6 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.electionTimer = time.Duration(rand.Intn(rf.maxRandomTime-rf.maxRandomTime)) * 5
 	rf.electionTimeout = time.NewTimer(rf.electionTimer * time.Second)
 
-	//  time.Duration(HEART_BEAT_TIMEOUT*3+rand.Intn(HEART_BEAT_TIMEOUT)) * time.Millisecond
-
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
@@ -427,78 +425,4 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	channel, a concurrency-safe communication object
 
-
--- Trabalho
-
-	A service calls Make(peers,me,…) to create a Raft peer.
-	The peers argument is an array of established RPC connections, one to each Raft peer (including this one).
-	The me argument is the index of this peer in the peers array.
-	Start(command) asks Raft to start the processing to append the command to the replicated log.
-	Start() should return immediately, without waiting for for this process to complete.
-	The service expects your implementation to send an ApplyMsg for each new committed log entry to the applyCh argument to Make().
-
-	Your Raft peers should exchange RPCs using the labrpc Go package that we provide to you.
-	It is modeled after Go's rpc library, but internally uses Go channels rather than sockets.
-	raft.go contains some example code that sends an RPC (sendRequestVote()) and that handles an incoming RPC (RequestVote()).
-	The reason you must use labrpc instead of Go's RPC package is that the tester tells labrpc to delay RPCs,
-	re-order them, and delete them to simulate challenging networks conditions under which your code should work correctly.
-	Don't modify labrpc because we will test your code with the labrpc as handed out.
-
-
--- TODO:
-
-	Implement leader election and heartbeats (AppendEntries RPCs with no log entries).
-	The goal for Part 2A is for a single leader to be elected, for the leader to remain the leader if there are no failures,
-	and for a new leader to take over if the old leader fails or if packets to/from the old leader are lost.
-	Run go test -run 2A to test your 2A code
-
-
- -- Hints:
-
-	1- Add any state you need to the Raft struct in raft.go. You'll also need to define a struct to hold information about each log entry.
-	Your code should follow Figure 2 in the paper as closely as possible.
-
-	2- Go marshals only the public fields in any structure passed over RPC. Public fields are the ones whose names start with capital letters.
-	Forgetting to make fields public by naming them with capital letters is the single most frequent source of bugs in these labs.
-
-	3- Fill in the RequestVoteArgs and RequestVoteReply structs. Modify Make() to create a background goroutine
-	that will kick off leader election periodically by sending out RequestVote RPCs when it hasn't heard from another peer for a while.
-	This way a peer will learn who is the leader, if there is already leader, or become itself the leader.
-	Implement the RequestVote() RPC handler so that servers will vote for one another.
-
-	4- To implement heartbeats, define an AppendEntries RPC struct (though you may not need all the arguments yet),
-	and have the leader send them out periodically. Write an AppendEntries RPC handler method
-	that resets the election timeout so that other servers don't step forward as leaders when one has already been elected.
-
-	5- Make sure the election timeouts in different peers don't always fire at the same time,
-	or else all peers will vote for themselves and no one will become leader.
-
-	6- The tester requires that the leader send heartbeat RPCs no more than ten times per second.
-
-	7- The tester requires your Raft to elect a new leader within five seconds of the failure of the old leader
-	(if a majority of peers can still communicate). Remember, however, that leader election
-	may require multiple rounds in case of a split vote (which can happen if packets are lost or
-	if candidates unluckily choose the same random backoff times). You must pick election timeouts (and thus heartbeat intervals)
-	that are short enough that it's very likely that an election will complete in less than five seconds even if it requires multiple rounds.
-
-	8- The paper's Section 5.2 mentions election timeouts in the range of 150 to 300 milliseconds.
-	Such a range only makes sense if the leader sends heartbeats considerably more often than once per 150 milliseconds.
-	Because the tester limits you to 10 heartbeats per second, you will have to use an election timeout larger
-	than the paper's 150 to 300 milliseconds, but not too large, because then you may fail to elect a leader within five seconds.
-
-	9- You may find Go's time and rand packages useful.
-
-	10- If your code has trouble passing the tests, read the paper's Figure 2 again;
-	the full logic for leader election is spread over multiple parts of the Figure.
-
-	11- A good way to debug your code is to insert print statements when a peer sends or receives a message,
-	and collect the output in a file with go test -run 2A > out. Then, by studying the trace of messages in the out file,
-	you can identify where your implementation deviates from the desired protocol. You might find DPrintf in util.go
-	useful to turn printing on and off as you debug different problems.
-
-	12- You should check your code with go test -race, and fix any races it report
-
-	--
-
-	 If a server receives a request with a stale term number, it rejects the request
 */
