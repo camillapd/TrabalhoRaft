@@ -20,6 +20,7 @@ package raft
 import (
 	"labrpc"
 	"sync"
+	"time"
 )
 
 // variáveis globals da state machine
@@ -63,8 +64,8 @@ type Raft struct {
 
 	state           int // o estado do servidor raft
 	votes           int
-	electionTimeout int
-	electionTimer   int
+	electionTimeout *time.Timer
+	electionTimer   time.Duration
 }
 
 // return currentTerm and whether this server
@@ -339,18 +340,17 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.me = me               // índice do peer desse servidor, é um int
 
 	// inicializações dos estados do raft
+	// os vetores não precisam inicializar porque no Go começam com 0 por default
 	rf.currentTerm = 0
 	rf.votedFor = -1
-	// rf.log[]
 
 	rf.commitIndex = 0
 	rf.lastApplied = 0
 
-	// rf.nextIndex[] é inicializado com 0 por default pelo go porque é array
-	// rf.matchIndex[] é inicializado com 0 por default pelo go porque é array
-
-	// When servers start up, they begin as followers
 	rf.state = FOLLOWER
+	rf.votes = 0
+	rf.electionTimer = 500
+	rf.electionTimeout = time.NewTimer(rf.electionTimer * time.Second)
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
