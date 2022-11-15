@@ -309,23 +309,39 @@ func (rf *Raft) LeaderElection() { // WIP
 }
 
 // a go routine que implementa os heartbeats
-func (rf *Raft) Heartbeat() { // WIP
+func (rf *Raft) Heartbeat() {
+
+	for i := 0; i < len(rf.peers); i++ {
+		if i != rf.me {
+			if rf.state == LEADER {
+				go func(i int) {
 	appendEntriesArgs := &AppendEntriesArgs{}
-	appendEntriesReply := &AppendEntriesReply{}
 
-	var term, isLeader = rf.GetState()
-
-	if isLeader {
-		appendEntriesArgs.Term = term
+					rf.mu.Lock()
+					appendEntriesArgs.Term = rf.currentTerm
 		appendEntriesArgs.LeaderId = rf.me
-		// appendEntriesArgs.PrevLogIndex
-		// appendEntries.Args.PrevLogTerm
-		// appendEntriesArgs.log[] é zero para enviar heartbeats
 		appendEntriesArgs.LeaderCommit = rf.commitIndex
+					rf.mu.Unlock()
+
+					appendEntriesReply := &AppendEntriesReply{}
+					rf.peers[i].Call("Raft.AppendEntries", appendEntriesArgs, appendEntriesReply)
+
+					rf.mu.Lock()
+					if appendEntriesReply.Term > rf.currentTerm {
+						rf.currentTerm = appendEntriesArgs.Term
+						rf.state = FOLLOWER
+						rf.votes = 0
+						rf.votedFor = -1
+					}
+					rf.mu.Unlock()
+				}(i)
+			} else {
+				return
+			}
+		}
 	}
 
-	// o período de tempo que está no paragrafo, mudar depois
-	// possivelmente aumentar a variavel ate dar o tempo timeout
+	time.Sleep(100 * time.Millisecond)
 
 	/* Leaders send periodic
 	heartbeats (AppendEntries RPCs that carry no log entries)
@@ -335,12 +351,6 @@ func (rf *Raft) Heartbeat() { // WIP
 	then it assumes there is no viable leader
 	and begins an election to choose a new leader
 	*/
-
-	rf.AppendEntries(appendEntriesArgs, appendEntriesReply)
-
-	if rf.electionTimer == rf.electionTimeout {
-		rf.LeaderElection()
-	}
 
 }
 
