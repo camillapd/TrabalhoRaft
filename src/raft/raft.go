@@ -24,9 +24,9 @@ import (
 
 // variáveis globals da state machine
 // a qualquer momento cada servidor pode ter um dos três estados
-const  (
-	LEADER = 1
-	FOLLOWER = 2
+const (
+	LEADER    = 1
+	FOLLOWER  = 2
 	CANDIDATE = 3
 )
 
@@ -48,8 +48,8 @@ type Raft struct {
 	me        int                 // this peer's index into peers[]
 
 	// persistent on all servers
-	currentTerm int  // latest term server has seen (initialized to 0 on first boot, increases monotonically)
-	votedFor    int // candidateId that received vote in current term (or null if none)
+	currentTerm int          // latest term server has seen (initialized to 0 on first boot, increases monotonically)
+	votedFor    int          // candidateId that received vote in current term (or null if none)
 	log         []LogEntries // log entries
 
 	// volatile on all servers
@@ -58,10 +58,10 @@ type Raft struct {
 	lastApplied int // index of highest log entry applied to state machine (initialized to 0, increases monotonically)
 
 	// volatile on leaders - reinitialized after election
-	nextIndex []int // for each server, index of the next log entry to send to that server (initialized to leaderlast log index + 1)
+	nextIndex  []int // for each server, index of the next log entry to send to that server (initialized to leaderlast log index + 1)
 	matchIndex []int // for each server, index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)
 
-	state int
+	state           int
 	electionTimeout int
 }
 
@@ -71,7 +71,7 @@ func (rf *Raft) GetState() (int, bool) {
 	var term int = rf.currentTerm
 	var isleader bool = false
 
-	if (rf.state == LEADER) {
+	if rf.state == LEADER {
 		isleader = true
 	}
 
@@ -125,21 +125,21 @@ type RequestVoteReply struct {
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	rf.mu.Lock()
 
-		reply.Term = rf.currentTerm
+	reply.Term = rf.currentTerm
 
 	if rf.votedFor == -1 || rf.votedFor == args.CandidateId {
 		if args.Term < rf.currentTerm { // como no paper: Reply false if term < currentTerm
-		reply.VoteGranted = false
-		} else if args.Term > rf.currentTerm { 
+			reply.VoteGranted = false
+		} else if args.Term > rf.currentTerm {
 			// como no paper: If RPC request or response contains term T > currentTerm: set currentTerm = T
 			rf.currentTerm = args.Term
-			if args.LastLogTerm >= rf.log[rf.commitIndex-1].Term && args.LastLogIndex >= (rf.commitIndex)-1 { 
+			if args.LastLogTerm >= rf.log[rf.commitIndex-1].Term && args.LastLogIndex >= (rf.commitIndex)-1 {
 				// candidato.log tá mais avançado do que o do seguidor em 1 term e o último comando recebido é mais recente ou igual
-			rf.votedFor = args.CandidateId
-			reply.VoteGranted = true
-		} 
+				rf.votedFor = args.CandidateId
+				reply.VoteGranted = true
+			}
 		} else {
-			if args.LastLogTerm >= rf.log[rf.commitIndex-1].Term && args.LastLogIndex >= (rf.commitIndex)-1 { 
+			if args.LastLogTerm >= rf.log[rf.commitIndex-1].Term && args.LastLogIndex >= (rf.commitIndex)-1 {
 				// candidato.log tá mais avançado do que o do seguidor em 1 term e o último comando recebido é mais recente ou igual
 				rf.votedFor = args.CandidateId
 				reply.VoteGranted = true
@@ -188,8 +188,8 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 // log entries; each entry contains command for state machine, and term when entry
 // was received by leader (first index is 1)
 type LogEntries struct {
-	Index	int
-	Term 	int
+	Index   int
+	Term    int
 	Command interface{}
 }
 
@@ -214,13 +214,13 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	rf.mu.Lock()
 
 	reply.Term = rf.currentTerm // o valor do AppendEntriesReply vai receber sempre o term atual do raft
-	reply.Success = true // é verdadeiro a menos que o if aconteça
+	reply.Success = true        // é verdadeiro a menos que o if aconteça
 
 	if args.Term < rf.currentTerm { // como no paper: Reply false if term < currentTerm
-			reply.Success = false
+		reply.Success = false
 	} else if args.Term > rf.currentTerm { // como no paper: If RPC request or response contains term T > currentTerm: set currentTerm = T
 		rf.currentTerm = args.Term
-}
+	}
 
 	rf.mu.Unlock()
 }
@@ -241,7 +241,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	term := rf.currentTerm
 	isLeader := false
 
-	if (rf.state == LEADER) {
+	if rf.state == LEADER {
 		isLeader = true
 	}
 
@@ -252,11 +252,49 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 
 // a go routine que implementa a eleição de líderes
 func (rf *Raft) LeaderElection() {
+	rf.currentTerm = rf.currentTerm + 1
+	rf.state = CANDIDATE
+	rf.votedFor = rf.me
+
+	ra := &RequestVoteArgs{}
+	rr := &RequestVoteReply{}
+
+	rf.RequestVote(ra, rr)
+
+	/*
+		To begin an election, a follower increments its current
+		term and transitions to candidate state. It then votes for
+		itself and issues RequestVote RPCs in parallel to each of
+		the other servers in the cluster. A candidate continues in
+		this state until one of three things happens: (a) it wins the
+		election, (b) another server establishes itself as leader, or
+		(c) a period of time goes by with no winner.
+	*/
 
 }
 
 // a go routine que implementa os heartbeats
 func (rf *Raft) Heartbeat() {
+	ae := &AppendEntriesArgs{}
+	ar := &AppendEntriesReply{}
+	var timePeriod int = 0
+	// o período de tempo que está no paragrafo, mudar depois
+	// possivelmente aumentar a variavel ate dar o tempo timeout
+
+	/* Leaders send periodic
+	heartbeats (AppendEntries RPCs that carry no log entries)
+	to all followers in order to maintain their authority.
+	If a follower receives no communication
+	over a period of time called the election timeout,
+	then it assumes there is no viable leader
+	and begins an election to choose a new leader
+	*/
+
+	rf.AppendEntries(ae, ar)
+
+	if timePeriod == rf.electionTimeout {
+		rf.LeaderElection()
+	}
 
 }
 
@@ -284,7 +322,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.me = me               // índice do peer desse servidor, é um int
 
 	// inicializações dos estados do raft
-	rf.currentTerm = 0 	
+	rf.currentTerm = 0
 	rf.votedFor = -1
 	// rf.log[]
 
@@ -294,6 +332,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	// rf.nextIndex[] é inicializado com 0 por default pelo go porque é array
 	// rf.matchIndex[] é inicializado com 0 por default pelo go porque é array
 
+	// When servers start up, they begin as followers
 	rf.state = FOLLOWER
 
 	// initialize from state persisted before a crash
@@ -384,4 +423,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	useful to turn printing on and off as you debug different problems.
 
 	12- You should check your code with go test -race, and fix any races it report
+
+	--
+
+	 If a server receives a request with a stale term number, it rejects the request
 */
