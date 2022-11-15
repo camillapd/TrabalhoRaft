@@ -213,6 +213,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 	reply.Term = rf.currentTerm // o valor do AppendEntriesReply vai receber sempre o term atual do raft
 	reply.Success = true        // é verdadeiro a menos que o if aconteça
+	rf.ResetElectionTimeout()
 
 	if args.Term < rf.currentTerm { // como no paper: Reply false if term < currentTerm
 		reply.Success = false
@@ -234,6 +235,32 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 // if it's ever committed. the second return value is the current
 // term. the third return value is true if this server believes it is
 // the leader.
+
+func (rf*Raft) ResetElectionTimeout(){
+	rand.Seed(time.Now().UnixNano())
+	rf.electionTimer = time.Duration(rand.Intn(100)) + 400 // et espera por, no max, meio segundo
+	rf.electionTimeout.Reset(rf.electionTimer)
+}
+
+func (rf *Raft) Loop(){
+
+	for true {
+		for rf.state == LEADER{
+			go rf.Heartbeat() // ou rf.Heartbeat    qual a diferença?
+		}
+
+		for rf.state == FOLLOWER{
+			
+			<-ref.electionTimeout.C //se o et estourar:
+			go rf.LeaderElection()
+
+			// isso faz sentido? essa parte de channels me confundiu um bocado
+
+		}
+	}
+
+}
+
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	index := -1
 	term := rf.currentTerm
@@ -263,9 +290,7 @@ func (rf *Raft) LeaderElection() {
 				rf.currentTerm = rf.currentTerm + 1
 				rf.votes = 1
 
-				rand.Seed(time.Now().UnixNano())
-				rf.electionTimer = time.Duration(rand.Intn(5))
-				rf.electionTimeout.Reset(rf.electionTimer)
+				rf.ResetElectionTimeout()
 
 				requestVoteReply := &RequestVoteReply{}
 
@@ -289,9 +314,7 @@ func (rf *Raft) LeaderElection() {
 									if rf.votes > len(rf.peers)/2 {
 										rf.state = LEADER
 										rf.currentTerm = rf.currentTerm + 1
-										rand.Seed(time.Now().UnixNano())
-										rf.electionTimer = time.Duration(rand.Intn(5))
-										rf.electionTimeout.Reset(rf.electionTimer)
+										rf.ResetElectionTimeout()
 										go rf.Heartbeat()
 									}
 								} else if requestVoteReply.Term > rf.currentTerm {
@@ -299,9 +322,7 @@ func (rf *Raft) LeaderElection() {
 									rf.state = FOLLOWER
 									rf.votes = 0
 									rf.votedFor = -1
-									rand.Seed(time.Now().UnixNano())
-									rf.electionTimer = time.Duration(rand.Intn(5))
-									rf.electionTimeout.Reset(rf.electionTimer)
+									rf.ResetElectionTimeout()
 								}
 								rf.mu.Unlock()
 							}
@@ -353,9 +374,7 @@ func (rf *Raft) Heartbeat() {
 						rf.state = FOLLOWER
 						rf.votes = 0
 						rf.votedFor = -1
-						rand.Seed(time.Now().UnixNano())
-						rf.electionTimer = time.Duration(rand.Intn(5))
-						rf.electionTimeout.Reset(rf.electionTimer)
+						rf.ResetElectionTimeout()
 					}
 					rf.mu.Unlock()
 				}(i)
@@ -365,7 +384,7 @@ func (rf *Raft) Heartbeat() {
 		}
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(125 * time.Millisecond) // garantir que serão menos de 10 hb/s conforme regras do fim do codigo
 
 	/* Leaders send periodic
 	heartbeats (AppendEntries RPCs that carry no log entries)
@@ -412,7 +431,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.state = FOLLOWER
 	rf.votes = 0
 	rand.Seed(time.Now().UnixNano())
-	rf.electionTimer = time.Duration(rand.Intn(5))
+	rf.electionTimer = time.Duration(rand.Intn(100)) + 400
 	rf.electionTimeout = time.NewTimer(rf.electionTimer * time.Millisecond)
 
 	// initialize from state persisted before a crash
