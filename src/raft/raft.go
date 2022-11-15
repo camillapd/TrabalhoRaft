@@ -257,13 +257,14 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 }
 
 // a go routine que implementa a eleição de líderes
-func (rf *Raft) LeaderElection() { // WIP
+func (rf *Raft) LeaderElection() {
 
 	go func() {
 		for true {
 			rf.mu.Lock()
 			if rf.state == FOLLOWER {
-				rf.state = CANDIDATE // WIP
+				rf.state = CANDIDATE
+				continue
 			}
 
 			if rf.state == CANDIDATE {
@@ -274,6 +275,7 @@ func (rf *Raft) LeaderElection() { // WIP
 
 				requestVoteReply := &RequestVoteReply{}
 
+				// manda a mensagem para votar
 				for i := 0; i < len(rf.peers); i++ {
 					if i != rf.me {
 						go func(i int) {
@@ -284,13 +286,32 @@ func (rf *Raft) LeaderElection() { // WIP
 							rf.mu.Unlock()
 
 							rf.RequestVote(requestVoteArgs, requestVoteReply)
+
+							if rf.sendRequestVote(i, requestVoteArgs, requestVoteReply) {
+								rf.mu.Lock()
+
+								if requestVoteReply.VoteGranted && rf.state == CANDIDATE {
+									rf.votes = rf.votes + 1
+									if rf.votes > len(rf.peers)/2 {
+										rf.state = LEADER
+										rf.currentTerm = rf.currentTerm + 1
+										go rf.Heartbeat()
+									}
+								} else if requestVoteReply.Term > rf.currentTerm {
+									rf.currentTerm = requestVoteArgs.Term
+									rf.state = FOLLOWER
+									rf.votes = 0
+									rf.votedFor = -1
+								}
+								rf.mu.Unlock()
+							}
 						}(i)
 					}
 				}
 			}
 
 			if rf.state == LEADER {
-
+				continue
 			}
 
 			rf.mu.Unlock()
