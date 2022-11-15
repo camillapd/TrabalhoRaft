@@ -61,8 +61,10 @@ type Raft struct {
 	nextIndex  []int // for each server, index of the next log entry to send to that server (initialized to leaderlast log index + 1)
 	matchIndex []int // for each server, index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)
 
-	state           int
+	state           int // o estado do servidor raft
+	votes           int
 	electionTimeout int
+	electionTimer   int
 }
 
 // return currentTerm and whether this server
@@ -251,15 +253,19 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 }
 
 // a go routine que implementa a eleição de líderes
-func (rf *Raft) LeaderElection() {
+func (rf *Raft) LeaderElection() { // WIP
 	rf.currentTerm = rf.currentTerm + 1
 	rf.state = CANDIDATE
 	rf.votedFor = rf.me
 
-	ra := &RequestVoteArgs{}
-	rr := &RequestVoteReply{}
+	rf.electionTimer = 0
 
-	rf.RequestVote(ra, rr)
+	// if rf.votesReceived > outros ?
+
+	requestVoteArgs := &RequestVoteArgs{}
+	requestVoteReply := &RequestVoteReply{}
+
+	rf.RequestVote(requestVoteArgs, requestVoteReply)
 
 	/*
 		To begin an election, a follower increments its current
@@ -274,10 +280,21 @@ func (rf *Raft) LeaderElection() {
 }
 
 // a go routine que implementa os heartbeats
-func (rf *Raft) Heartbeat() {
-	ae := &AppendEntriesArgs{}
-	ar := &AppendEntriesReply{}
-	var timePeriod int = 0
+func (rf *Raft) Heartbeat() { // WIP
+	appendEntriesArgs := &AppendEntriesArgs{}
+	appendEntriesReply := &AppendEntriesReply{}
+
+	var term, isLeader = rf.GetState()
+
+	if isLeader {
+		appendEntriesArgs.Term = term
+		appendEntriesArgs.LeaderId = rf.me
+		// appendEntriesArgs.PrevLogIndex
+		// appendEntries.Args.PrevLogTerm
+		// appendEntriesArgs.log[] é zero para enviar heartbeats
+		appendEntriesArgs.LeaderCommit = rf.commitIndex
+	}
+
 	// o período de tempo que está no paragrafo, mudar depois
 	// possivelmente aumentar a variavel ate dar o tempo timeout
 
@@ -290,9 +307,9 @@ func (rf *Raft) Heartbeat() {
 	and begins an election to choose a new leader
 	*/
 
-	rf.AppendEntries(ae, ar)
+	rf.AppendEntries(appendEntriesArgs, appendEntriesReply)
 
-	if timePeriod == rf.electionTimeout {
+	if rf.electionTimer == rf.electionTimeout {
 		rf.LeaderElection()
 	}
 
@@ -315,7 +332,7 @@ func (rf *Raft) Kill() {
 // Make() must return quickly, so it should start goroutines
 // for any long-running work.
 func Make(peers []*labrpc.ClientEnd, me int,
-	persister *Persister, applyCh chan ApplyMsg) *Raft {
+	persister *Persister, applyCh chan ApplyMsg) *Raft { // WIP
 	rf := &Raft{}            // pega o endereço do Raft, é o objeto Raft
 	rf.peers = peers         // endpoint do RPC dos peers, é um vetor de ponteiros de ClientEnd
 	rf.persister = persister // guarda o estado persistido, é um ponteiro de Persister
