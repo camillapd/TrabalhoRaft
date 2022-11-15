@@ -242,6 +242,7 @@ func (rf*Raft) ResetElectionTimeout(){
 	rf.electionTimeout.Reset(rf.electionTimer)
 }
 
+// a go routine que verifica electionTimeout e lança Heartbeats
 func (rf *Raft) Loop(){
 
 	for true {
@@ -439,6 +440,9 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	// aqui é a goroutine para começar a eleição
 	go rf.LeaderElection()
+	
+	// goroutine para verificar hb e timeout
+	go rf.Loop()
 
 	return rf
 }
