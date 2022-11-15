@@ -139,11 +139,11 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		} else if args.Term > rf.currentTerm {
 			// como no paper: If RPC request or response contains term T > currentTerm: set currentTerm = T
 			rf.currentTerm = args.Term
-				rf.votedFor = args.CandidateId
-				reply.VoteGranted = true
+			rf.votedFor = args.CandidateId
+			reply.VoteGranted = true
 		} else {
-				rf.votedFor = args.CandidateId
-				reply.VoteGranted = true
+			rf.votedFor = args.CandidateId
+			reply.VoteGranted = true
 		}
 	} else {
 		reply.VoteGranted = false
@@ -330,12 +330,12 @@ func (rf *Raft) Heartbeat() {
 		if i != rf.me {
 			if rf.state == LEADER {
 				go func(i int) {
-	appendEntriesArgs := &AppendEntriesArgs{}
+					appendEntriesArgs := &AppendEntriesArgs{}
 
 					rf.mu.Lock()
 					appendEntriesArgs.Term = rf.currentTerm
-		appendEntriesArgs.LeaderId = rf.me
-		appendEntriesArgs.LeaderCommit = rf.commitIndex
+					appendEntriesArgs.LeaderId = rf.me
+					appendEntriesArgs.LeaderCommit = rf.commitIndex
 					rf.mu.Unlock()
 
 					appendEntriesReply := &AppendEntriesReply{}
