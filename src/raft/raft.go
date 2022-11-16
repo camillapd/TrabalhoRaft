@@ -221,6 +221,10 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		rf.currentTerm = args.Term
 	}
 
+	if rf.state == CANDIDATE && args.Term >= rf.currentTerm{
+		rf.state = FOLLOWER
+	}
+
 	rf.mu.Unlock()
 }
 
@@ -246,17 +250,18 @@ func (rf*Raft) ResetElectionTimeout(){
 func (rf *Raft) Loop(){
 
 	for true {
-		for rf.state == LEADER{
+		for rf.state == LEADER {
 			go rf.Heartbeat() // ou rf.Heartbeat    qual a diferença?
 		}
 
-		for rf.state == FOLLOWER{
+		for rf.state == FOLLOWER || rf.state == CANDIDATE {
 			
 			<-ref.electionTimeout.C //se o et estourar:
 			go rf.LeaderElection()
 
 			// isso faz sentido? essa parte de channels me confundiu um bocado
 
+			time.Sleep(50 * time.Millisecond)
 		}
 	}
 
